@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>The Flaky Network - FEC/ARQ Hybrid Architecture</title>
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; max-width: 800px; margin: auto; padding: 20px; color: #333; }
+        h1, h2 { color: #111; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
+        code { background: #f4f4f4; padding: 2px 5px; border-radius: 4px; font-family: monospace; }
+        ul { margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Architecture and Design Choices</h1>
+    <h2>Overview</h2>
+    <p>To achieve the lowest valid playout delay, we must bypass the round-trip time (RTT) associated with traditional retransmission models. The system requirements specify a strict 2.0x bandwidth overhead cap on raw frames[cite: 1, 9]. We designed a hybrid Forward Error Correction (FEC) and ARQ mechanism that utilizes ~1.55x of this bandwidth budget to provide zero-RTT packet recovery.</p>
+    
+    <h2>Sender Architecture</h2>
+    <p>The sender groups outgoing frames into pairs. For every sequential pair (e.g., Frame 0 and Frame 1), it generates a custom 168-byte parity packet containing the XOR computation of both payloads. This ensures that if the hostile network drops one of the primary frames, the redundant parity data is already en route[cite: 1, 7].</p>
+    
+    <h2>Receiver Architecture</h2>
+    <ul>
+        <li><strong>Instant FEC Recovery:</strong> When the receiver detects an incoming parity packet (identified by a high-bit flag in the sequence header), it checks its tracking arrays. If one of the base payloads is missing, it instantly performs the XOR calculation to restore the dropped payload and forwards it to the playout harness[cite: 4, 6]. This entirely eliminates network delay latency.</li>
+        <li><strong>ARQ Fallback:</strong> To handle "burst losses" where consecutive packets and their parities are dropped simultaneously by the relay[cite: 7], the receiver maintains a continuous 50ms <code>select()</code> loop[cite: 6]. It actively scans for unresolved gaps and fires lightweight 4-byte NACKs to the sender for delayed retransmission[cite: 3].</li>
+    </ul>
+</body>
+</html>
